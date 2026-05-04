@@ -60,3 +60,52 @@ Baseline acc.(LAI): 93.10
 Accuracy:           97.37
 ERR:                61.93
 ```
+
+## Lightweight model
+
+`model.py` contains the assignment model used for reproducible runs. It keeps the
+provided MFR baseline as the main behavior, then adds exact global and lowercase
+fallback tables so unseen language-specific tokens can still reuse evidence from the
+training data.
+
+```bash
+# Evaluate on the validation split
+python model.py --eval-only
+
+# Generate test predictions and zip them for submission
+python model.py \
+  --dataset weerayut/multilexnorm2026-dev-pub \
+  --output-dir outputs/submission_dev
+```
+
+If the Hugging Face dataset requires authentication, first run
+`huggingface-cli login`, then add `--use-auth-token` to either command.
+
+## ByT5 model
+
+`byt5_model.py` fine-tunes `google/byt5-small` as a byte-level token
+normalizer. Each training example maps one raw token plus its language tag to
+one normalized token, which preserves the required prediction length even when
+the normalized form contains spaces.
+
+```bash
+# Fast pipeline test with a tiny random ByT5 checkpoint
+python byt5_model.py \
+  --smoke-test \
+  --model-name local-tiny-random-byt5 \
+  --model-dir models/byt5_smoke
+
+# Fine-tune the real base model on a bounded local subset
+python byt5_model.py \
+  --train \
+  --use-auth-token \
+  --model-name google/byt5-small \
+  --model-dir models/byt5 \
+  --max-train-examples 5000 \
+  --epochs 1 \
+  --batch-size 2 \
+  --gradient-accumulation-steps 8
+
+# Evaluate a trained checkpoint
+python byt5_model.py --eval-only --use-auth-token --model-dir models/byt5
+```
