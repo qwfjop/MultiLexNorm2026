@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
-from dataclasses import dataclass
+import shlex
+import sys
+from dataclasses import asdict, dataclass
 from typing import Iterable, Mapping, Sequence
 
 import pandas as pd
@@ -340,10 +343,50 @@ def train_from_hf_dataset(
     dataset_name: str,
     config: ByT5TrainConfig,
     use_auth_token: bool = False,
+    cli_args: Sequence[str] | None = None,
 ) -> ByT5Normalizer:
     data = _load_dataset(dataset_name, use_auth_token=use_auth_token)
     model = ByT5Normalizer(config.model_name)
-    return model.fit(_records_from_dataset(data["train"]), config)
+    model.fit(_records_from_dataset(data["train"]), config)
+    write_training_metadata(
+        config.output_dir,
+        dataset_name=dataset_name,
+        use_auth_token=use_auth_token,
+        config=config,
+        cli_args=cli_args,
+    )
+    return model
+
+
+def write_training_metadata(
+    output_dir: str,
+    dataset_name: str,
+    use_auth_token: bool,
+    config: ByT5TrainConfig,
+    cli_args: Sequence[str] | None,
+) -> None:
+    os.makedirs(output_dir, exist_ok=True)
+    command = " ".join(shlex.quote(part) for part in ([sys.argv[0]] + list(cli_args or [])))
+    metadata = {
+        "dataset": dataset_name,
+        "use_auth_token": use_auth_token,
+        "command": command,
+        "config": asdict(config),
+    }
+
+    json_path = os.path.join(output_dir, "training_args.json")
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+    txt_path = os.path.join(output_dir, "training_args.txt")
+    with open(txt_path, "w", encoding="utf-8") as f:
+        f.write(f"dataset: {dataset_name}\n")
+        f.write(f"use_auth_token: {use_auth_token}\n")
+        f.write(f"command: {command}\n\n")
+        for key, value in asdict(config).items():
+            f.write(f"{key}: {value}\n")
+
+    print(f"Saved training metadata to {json_path} and {txt_path}", flush=True)
 
 
 def evaluate_validation(
@@ -494,7 +537,12 @@ def main() -> None:
     )
 
     if args.train:
-        train_from_hf_dataset(args.dataset, config, use_auth_token=args.use_auth_token)
+        train_from_hf_dataset(
+            args.dataset,
+            config,
+            use_auth_token=args.use_auth_token,
+            cli_args=sys.argv[1:],
+        )
     if args.eval_only:
         evaluate_validation(
             args.dataset,
