@@ -301,6 +301,35 @@ def evaluate_validation(
     )
 
 
+def inspect_validation_predictions(
+    dataset_name: str,
+    model_path: str,
+    use_auth_token: bool = False,
+    batch_size: int = 16,
+    limit: int = 10,
+) -> None:
+    data = _load_dataset(dataset_name, use_auth_token=use_auth_token)
+    model = ByT5Normalizer.from_pretrained(model_path)
+    rows = list(data["validation"].select(range(min(limit, len(data["validation"])))))
+
+    for idx, row in enumerate(rows, start=1):
+        pred = model.predict_tokens(row["raw"], row["lang"], batch_size=batch_size)
+        print(f"\n[{idx}] lang={row['lang']}")
+        print("raw :", row["raw"])
+        print("gold:", row["norm"])
+        print("pred:", pred)
+
+        changed = [
+            f"{raw} -> {prediction} (gold: {gold})"
+            for raw, gold, prediction in zip(row["raw"], row["norm"], pred)
+            if raw != prediction or gold != ""
+        ]
+        if changed:
+            print("diff:", "; ".join(changed))
+        else:
+            print("diff: no changes")
+
+
 def create_submission(
     dataset_name: str,
     model_path: str,
@@ -367,6 +396,8 @@ def main() -> None:
     parser.add_argument("--use-auth-token", action="store_true")
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--eval-only", action="store_true")
+    parser.add_argument("--inspect", action="store_true")
+    parser.add_argument("--inspect-limit", type=int, default=10)
     parser.add_argument("--predict-test", action="store_true")
     parser.add_argument("--smoke-test", action="store_true")
     parser.add_argument("--no-zip", action="store_true")
@@ -398,6 +429,14 @@ def main() -> None:
             use_auth_token=args.use_auth_token,
             batch_size=args.batch_size,
         )
+    if args.inspect:
+        inspect_validation_predictions(
+            args.dataset,
+            args.model_dir,
+            use_auth_token=args.use_auth_token,
+            batch_size=args.batch_size,
+            limit=args.inspect_limit,
+        )
     if args.predict_test:
         create_submission(
             args.dataset,
@@ -407,7 +446,7 @@ def main() -> None:
             batch_size=args.batch_size,
             zip_output=not args.no_zip,
         )
-    if not (args.train or args.eval_only or args.predict_test):
+    if not (args.train or args.eval_only or args.inspect or args.predict_test):
         parser.print_help()
 
 
