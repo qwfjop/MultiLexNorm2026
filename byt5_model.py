@@ -307,27 +307,37 @@ def inspect_validation_predictions(
     use_auth_token: bool = False,
     batch_size: int = 16,
     limit: int = 10,
+    langs: set[str] | None = None,
 ) -> None:
     data = _load_dataset(dataset_name, use_auth_token=use_auth_token)
     model = ByT5Normalizer.from_pretrained(model_path)
-    rows = list(data["validation"].select(range(min(limit, len(data["validation"])))))
 
-    for idx, row in enumerate(rows, start=1):
+    shown = 0
+    for row in data["validation"]:
+        if langs is not None and row["lang"] not in langs:
+            continue
+        shown += 1
         pred = model.predict_tokens(row["raw"], row["lang"], batch_size=batch_size)
-        print(f"\n[{idx}] lang={row['lang']}")
+        print(f"\n[{shown}] lang={row['lang']}")
         print("raw :", row["raw"])
         print("gold:", row["norm"])
         print("pred:", pred)
 
         changed = [
-            f"{raw} -> {prediction} (gold: {gold})"
+            f"{raw} -> pred:{prediction} / gold:{gold}"
             for raw, gold, prediction in zip(row["raw"], row["norm"], pred)
-            if raw != prediction or gold != ""
+            if prediction != gold
         ]
         if changed:
             print("diff:", "; ".join(changed))
         else:
-            print("diff: no changes")
+            print("diff: all correct")
+
+        if shown >= limit:
+            break
+
+    if shown == 0:
+        print("No validation examples matched the requested language filter.")
 
 
 def create_submission(
@@ -398,6 +408,7 @@ def main() -> None:
     parser.add_argument("--eval-only", action="store_true")
     parser.add_argument("--inspect", action="store_true")
     parser.add_argument("--inspect-limit", type=int, default=10)
+    parser.add_argument("--inspect-langs", help="Comma-separated language filter, e.g. en,ko")
     parser.add_argument("--predict-test", action="store_true")
     parser.add_argument("--smoke-test", action="store_true")
     parser.add_argument("--no-zip", action="store_true")
@@ -430,12 +441,16 @@ def main() -> None:
             batch_size=args.batch_size,
         )
     if args.inspect:
+        inspect_langs = None
+        if args.inspect_langs:
+            inspect_langs = {lang.strip() for lang in args.inspect_langs.split(",") if lang.strip()}
         inspect_validation_predictions(
             args.dataset,
             args.model_dir,
             use_auth_token=args.use_auth_token,
             batch_size=args.batch_size,
             limit=args.inspect_limit,
+            langs=inspect_langs,
         )
     if args.predict_test:
         create_submission(
