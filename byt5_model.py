@@ -247,6 +247,58 @@ class ByT5Normalizer:
 
         return predictions
 
+    def predict_token_items(
+        self,
+        items: Sequence[tuple[str, str]],
+        batch_size: int = 16,
+        max_input_length: int = 128,
+        max_new_tokens: int = 64,
+        log_every_batches: int = 25,
+    ) -> list[str]:
+        predictions: list[str] = []
+        self.model.eval()
+
+        import torch
+
+        total_batches = (len(items) + batch_size - 1) // batch_size
+        print(
+            f"predicting tokens={len(items)} batch_size={batch_size} batches={total_batches}",
+            flush=True,
+        )
+
+        with torch.inference_mode():
+            for batch_number, start in enumerate(range(0, len(items), batch_size), start=1):
+                chunk = list(items[start : start + batch_size])
+                inputs = [format_input(token, lang) for token, lang in chunk]
+                encoded = self.tokenizer(
+                    inputs,
+                    return_tensors="pt",
+                    padding=True,
+                    truncation=True,
+                    max_length=max_input_length,
+                )
+                encoded = {key: value.to(self.device) for key, value in encoded.items()}
+                generated = self.model.generate(
+                    **encoded,
+                    max_new_tokens=max_new_tokens,
+                    num_beams=1,
+                    do_sample=False,
+                )
+                decoded = self.tokenizer.batch_decode(generated, skip_special_tokens=True)
+                predictions.extend(
+                    text.strip() if text.strip() else token
+                    for text, (token, _) in zip(decoded, chunk)
+                )
+
+                if log_every_batches > 0 and (
+                    batch_number == 1
+                    or batch_number % log_every_batches == 0
+                    or batch_number == total_batches
+                ):
+                    print(f"predict batch={batch_number}/{total_batches}", flush=True)
+
+        return predictions
+
     def predict_dataframe(
         self,
         data: pd.DataFrame,
@@ -255,16 +307,28 @@ class ByT5Normalizer:
         max_new_tokens: int = 64,
     ) -> pd.DataFrame:
         out = data.copy()
-        out["pred"] = out.apply(
-            lambda row: self.predict_tokens(
-                row["raw"],
-                row["lang"],
-                batch_size=batch_size,
-                max_input_length=max_input_length,
-                max_new_tokens=max_new_tokens,
-            ),
-            axis=1,
+        token_items: list[tuple[str, str]] = []
+        row_lengths: list[int] = []
+
+        for row in out.itertuples(index=False):
+            raw_tokens = list(row.raw)
+            row_lengths.append(len(raw_tokens))
+            token_items.extend((token, row.lang) for token in raw_tokens)
+
+        flat_predictions = self.predict_token_items(
+            token_items,
+            batch_size=batch_size,
+            max_input_length=max_input_length,
+            max_new_tokens=max_new_tokens,
         )
+
+        preds: list[list[str]] = []
+        cursor = 0
+        for row_length in row_lengths:
+            preds.append(flat_predictions[cursor : cursor + row_length])
+            cursor += row_length
+
+        out["pred"] = preds
         return out
 
 

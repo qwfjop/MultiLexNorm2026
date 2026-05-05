@@ -126,5 +126,10 @@ python byt5_model.py \
   --gradient-accumulation-steps 8
 
 # Evaluate a trained checkpoint
-python byt5_model.py --eval-only --use-auth-token --model-dir models/byt5
+python byt5_model.py --eval-only --use-auth-token --model-dir models/byt5 --batch-size 128
 ```
+
+During evaluation and test prediction, ByT5 predictions are globally batched
+across all sentence tokens and then reconstructed into the original sentence
+format. On a T4 GPU, increase `--batch-size` until memory is near full or CUDA
+runs out of memory.
