@@ -7,7 +7,7 @@ from typing import Iterable, Mapping, Sequence
 
 import pandas as pd
 
-from utils import evaluate, zip_files_flat
+from utils import evaluate, gold_or_raw, zip_files_flat
 
 
 def _load_dataset(dataset_name: str, use_auth_token: bool = False):
@@ -53,7 +53,7 @@ def iter_token_examples(records: Iterable[Mapping[str, object]]):
         for raw_token, norm_token in zip(raw_tokens, norm_tokens):
             yield {
                 "input": format_input(raw_token, lang),
-                "target": norm_token if norm_token != "" else raw_token,
+                "target": gold_or_raw(raw_token, norm_token),
             }
 
 

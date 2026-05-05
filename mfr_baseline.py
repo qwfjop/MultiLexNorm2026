@@ -5,7 +5,7 @@ import os
 
 import pandas as pd
 
-from utils import counting, evaluate, mfr, zip_files_flat
+from utils import evaluate, prediction_mfr_by_language, zip_files_flat
 
 
 def _load_dataset(dataset_name: str, use_auth_token: bool = False):
@@ -16,19 +16,7 @@ def _load_dataset(dataset_name: str, use_auth_token: bool = False):
 
 
 def predict(train_dataset, test_dataset) -> pd.DataFrame:
-    train_df = train_dataset.to_pandas()
-    test_df = test_dataset.to_pandas()
-
-    count_langs = {}
-    for lang in train_df["lang"].unique():
-        train_lang = train_df.loc[train_df["lang"] == lang]
-        count_langs[lang] = counting(train_lang.to_dict(orient="records"))
-
-    test_df["pred"] = test_df.apply(
-        lambda row: mfr(row["raw"], count_langs.get(row["lang"], {})),
-        axis=1,
-    )
-    return test_df
+    return prediction_mfr_by_language(train_dataset, test_dataset)
 
 
 def evaluate_validation(dataset_name: str, use_auth_token: bool = False):

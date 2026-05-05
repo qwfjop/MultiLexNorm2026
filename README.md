@@ -7,6 +7,17 @@ It demonstrates how to download the dataset, run a simple baseline model (MFR), 
 - The datasets will be available at [development phase](https://huggingface.co/datasets/weerayut/multilexnorm2026-dev-pub) and [final phase](https://huggingface.co/datasets/weerayut/multilexnorm2026-dev-pub).
 - Example MFR submission outputs: `outputs/submission_dev.zip` and `outputs/submission_full.zip`
 
+## Assignment extensions
+
+This project keeps the provided baseline structure and extends it:
+
+- `utils.py` still contains the shared MFR, evaluation, and zip helpers from the baseline.
+- `mfr_baseline.py` is a script version of the original per-language MFR demo.
+- `byt5_model.py` is the proposed model; it uses the same dataset splits, token-level prediction format, and `utils.evaluate()` metric.
+- `model.py` is a lightweight exploratory MFR+ variant kept for comparison, not the main proposed model.
+
+For report comparison, use `mfr_baseline.py` as the provided baseline and `byt5_model.py` as the fine-tuned model.
+
 ## Set up the environment
 ```bash
 # Create an environment and install packages
@@ -80,6 +91,14 @@ python model.py \
 
 If the Hugging Face dataset requires authentication, first run
 `huggingface-cli login`, then add `--use-auth-token` to either command.
+
+## Exact MFR baseline
+
+`mfr_baseline.py` follows the provided notebook baseline as a reproducible script.
+
+```bash
+python mfr_baseline.py --eval-only --use-auth-token
+```
 
 ## ByT5 model
 

@@ -2,12 +2,17 @@ import os
 import zipfile
 
 
+def gold_or_raw(raw_token, norm_token):
+    return norm_token if norm_token != "" else raw_token
+
+
 def counting(data):
     counts = {}
     for item in data:
         sentRaw = item['raw']
         sentGold = item['norm']
         for wordRaw, wordGold in zip(sentRaw, sentGold):
+            wordGold = gold_or_raw(wordRaw, wordGold)
             if wordRaw not in counts:
                 counts[wordRaw] = {}
             if wordGold not in counts[wordRaw]:
@@ -24,6 +29,22 @@ def mfr(input_sent, counts):
             replacement = word
         predictions.append(replacement)
     return predictions
+
+
+def prediction_mfr_by_language(train, test):
+    train_df = train.to_pandas()
+    test_df = test.to_pandas()
+
+    count_langs = {}
+    for lang in train_df["lang"].unique():
+        train_lang = train_df.loc[train_df["lang"] == lang]
+        count_langs[lang] = counting(train_lang.to_dict(orient="records"))
+
+    test_df["pred"] = test_df.apply(
+        lambda row: mfr(row["raw"], count_langs.get(row["lang"], {})),
+        axis=1,
+    )
+    return test_df
 
 
 
@@ -43,6 +64,7 @@ def evaluate(raw, gold, pred, ignCaps=False, verbose=False, info=True):
                 wordRaw = wordRaw.lower()
                 wordGold = wordGold.lower()
                 wordPred = wordPred.lower()
+            wordGold = gold_or_raw(wordRaw, wordGold)
             if wordRaw != wordGold:
                 changed += 1
             if wordGold == wordPred:
