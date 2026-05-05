@@ -21,9 +21,12 @@ def _select_device():
     import torch
 
     if torch.cuda.is_available():
+        print("CUDA")
         return torch.device("cuda")
     if torch.backends.mps.is_available():
+        print("MPS")
         return torch.device("mps")
+    print("CPU")
     return torch.device("cpu")
 
 
