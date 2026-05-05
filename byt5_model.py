@@ -51,11 +51,9 @@ def iter_token_examples(records: Iterable[Mapping[str, object]]):
             continue
 
         for raw_token, norm_token in zip(raw_tokens, norm_tokens):
-            if norm_token == "":
-                continue
             yield {
                 "input": format_input(raw_token, lang),
-                "target": norm_token,
+                "target": norm_token if norm_token != "" else raw_token,
             }
 
 
