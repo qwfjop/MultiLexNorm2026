@@ -48,8 +48,15 @@ def _as_token_list(value) -> list[str] | None:
 def format_prompt(raw_tokens: Sequence[str], lang: str, target_index: int) -> str:
     target_token = raw_tokens[target_index]
     return (
-        "Normalize only the target token using the sentence context.\n"
-        "Return only the normalized token. Do not explain.\n\n"
+        "You are a lexical normalization model for noisy social-media text.\n"
+        "Task: normalize exactly one target token while using the whole sentence as context.\n"
+        "Output format rules:\n"
+        "1. Return exactly one token only.\n"
+        "2. Do not return a sentence, JSON, quotes, markdown, labels, or explanations.\n"
+        "3. Preserve the token unchanged if it is already normalized.\n"
+        "4. Preserve punctuation, emoticons, URLs, usernames, hashtags, and special placeholders unless the gold style clearly normalizes them.\n"
+        "5. Keep the output in the same language/script as the intended normalized token.\n"
+        "6. Never invent extra tokens or split the target into multiple tokens.\n\n"
         f"Language: {lang}\n"
         f"Sentence tokens: {json.dumps(list(raw_tokens), ensure_ascii=False)}\n"
         f"Target index: {target_index}\n"

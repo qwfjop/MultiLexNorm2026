@@ -18,6 +18,81 @@ This project keeps the provided baseline structure and extends it:
 
 For report comparison, use `mfr_baseline.py` as the provided baseline and `byt5_model.py` as the fine-tuned model.
 
+## Colab Gemma workflow
+
+`main.ipynb` is now a Colab-first Gemma workflow. It keeps the needed cells only:
+GPU check, clone/pull, dependency install, Hugging Face login, dataset sanity
+check, MFR baseline evaluation, Gemma LoRA training, prediction inspection,
+standalone Gemma validation, MFR+Gemma hybrid validation, and final test
+prediction.
+
+The Gemma prompt contract in `gemma_model.py` is deliberately strict:
+
+- Input contains language, the full tokenized sentence, the target index, and
+  the target token.
+- Output must be exactly one normalized token.
+- Gemma must not emit JSON, labels, markdown, quotes, explanations, or extra
+  tokens.
+- If a token is already normalized, Gemma should copy it unchanged.
+- Punctuation, URLs, usernames, hashtags, emoticons, and placeholders should be
+  preserved unless the gold data style normalizes them.
+
+Train a Colab LoRA checkpoint:
+
+```bash
+python gemma_model.py \
+  --train \
+  --use-auth-token \
+  --model-name google/gemma-3-270m-it \
+  --model-dir /content/drive/MyDrive/MultiLexNorm2026/models/gemma_colab_YYMMDD_HHMM \
+  --max-train-examples 40000 \
+  --epochs 1 \
+  --batch-size 4 \
+  --gradient-accumulation-steps 8 \
+  --learning-rate 2e-4 \
+  --max-length 256 \
+  --lora-rank 16 \
+  --lora-alpha 32 \
+  --log-every-steps 50 \
+  --save-every-steps 250
+```
+
+Expected training output shape:
+
+```txt
+CUDA
+training examples=... batches_per_epoch=... batch_size=4 grad_accum=8 device=cuda lora=True
+epoch=1/1 batch=... optimizer_steps=... batch_loss=... avg_loss=...
+Saved training metadata to .../training_args.json and .../training_args.txt
+```
+
+Evaluate the safer MFR+Gemma hybrid on validation:
+
+```bash
+python mfr_gemma_hf.py \
+  --eval-only \
+  --use-auth-token \
+  --model-dir /content/drive/MyDrive/MultiLexNorm2026/models/gemma_colab_YYMMDD_HHMM \
+  --batch-size 64 \
+  --metrics-path outputs/gemma_hybrid_validation_full.json \
+  --predictions-path outputs/gemma_hybrid_validation_full_predictions.json
+```
+
+Expected hybrid output shape:
+
+```txt
+gemma candidates=...
+predicting tokens=... batch_size=64 batches=...
+gemma predicted=... accepted=...
+Baseline acc.(LAI): ...
+Accuracy:           ...
+ERR:                ...
+wrote metrics_path=outputs/gemma_hybrid_validation_full.json
+```
+
+Use the validation split for scoring. Do not train on the test split; use test
+only after validation is good enough to create prediction files.
+
 ## Set up the environment
 ```bash
 # Create an environment and install packages
