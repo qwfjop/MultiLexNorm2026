@@ -5,14 +5,12 @@ import os
 
 import pandas as pd
 
+from dataset_io import load_dataset_auto
 from utils import evaluate, prediction_mfr_by_language, zip_files_flat
 
 
 def _load_dataset(dataset_name: str, use_auth_token: bool = False):
-    from datasets import load_dataset
-
-    token = os.environ.get("HF_TOKEN") or (True if use_auth_token else None)
-    return load_dataset(dataset_name, token=token)
+    return load_dataset_auto(dataset_name, use_auth_token=use_auth_token)
 
 
 def predict(train_dataset, test_dataset) -> pd.DataFrame:

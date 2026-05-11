@@ -75,13 +75,16 @@ ERR:                61.93
 ## Lightweight model
 
 `model.py` contains the assignment model used for reproducible runs. It keeps the
-provided MFR baseline as the main behavior, then adds exact global and lowercase
-fallback tables so unseen language-specific tokens can still reuse evidence from the
-training data.
+provided per-language MFR baseline as the main behavior, then adds a conservative
+cross-language fallback only when the token was unseen in the current language and
+the global replacement has a clear count margin.
 
 ```bash
 # Evaluate on the validation split
 python model.py --eval-only
+
+# Equivalent to the MFR baseline, without the extra fallback
+python model.py --eval-only --disable-global-fallback
 
 # Generate test predictions and zip them for submission
 python model.py \
@@ -91,6 +94,19 @@ python model.py \
 
 If the Hugging Face dataset requires authentication, first run
 `huggingface-cli login`, then add `--use-auth-token` to either command.
+
+To avoid repeated Hugging Face dataset downloads/token checks in Colab, save the
+dataset to Drive once and pass that local path later:
+
+```bash
+python cache_hf_dataset.py \
+  --use-auth-token \
+  --output-dir /content/drive/MyDrive/MultiLexNorm2026/data/dev-pub
+
+python model.py \
+  --eval-only \
+  --dataset /content/drive/MyDrive/MultiLexNorm2026/data/dev-pub
+```
 
 ## Exact MFR baseline
 

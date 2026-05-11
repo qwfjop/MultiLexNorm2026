@@ -10,14 +10,12 @@ from typing import Iterable, Mapping, Sequence
 
 import pandas as pd
 
+from dataset_io import load_dataset_auto
 from utils import evaluate, gold_or_raw, zip_files_flat
 
 
 def _load_dataset(dataset_name: str, use_auth_token: bool = False):
-    from datasets import load_dataset
-
-    token = os.environ.get("HF_TOKEN") or (True if use_auth_token else None)
-    return load_dataset(dataset_name, token=token)
+    return load_dataset_auto(dataset_name, use_auth_token=use_auth_token)
 
 
 def _select_device():

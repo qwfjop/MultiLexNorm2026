@@ -3,3 +3,5 @@ datasets>=2.19,<5.0
 pandas>=2.2,<3.0
 torch>=2.2
 transformers>=4.40,<5.0
+accelerate>=0.29
+peft>=0.10
