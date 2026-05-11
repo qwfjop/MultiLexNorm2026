@@ -79,6 +79,20 @@ provided per-language MFR baseline as the main behavior, then adds a conservativ
 cross-language fallback only when the token was unseen in the current language and
 the global replacement has a clear count margin.
 
+Current validation result on `weerayut/multilexnorm2026-dev-pub`:
+
+```txt
+# python model.py --eval-only --use-auth-token
+Baseline acc.(LAI): 88.53
+Accuracy:           94.16
+ERR:                49.05
+
+# python mfr_baseline.py --eval-only --use-auth-token
+Baseline acc.(LAI): 88.53
+Accuracy:           94.14
+ERR:                48.92
+```
+
 ```bash
 # Evaluate on the validation split
 python model.py --eval-only
